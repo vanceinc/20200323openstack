@@ -1,0 +1,76 @@
+---
+- name: Our first playbook (first play)
+  hosts: localhost   # normally this is IP address(s) of the host(s) to connect to
+
+  vars:
+    present_or_absent: present
+
+
+  tasks:
+
+    - name: Use Ansible to "openstack image list"
+      os_image_info:    # call to os_image_info.py <-- installed with ansible
+        cloud: alta3cloud     # this is a reference to creds in clouds.yml
+      register: result   # create a var called result and save the results
+      tags: 
+        - audit
+        - image
+
+    - name: Show images
+      debug:     # call to debug.py <--- installed with ansible, prints to the screen
+        msg: "{{ result.openstack_image[0].id }}"  #this produces the UUID of the image
+        #  msg: "{{ result.openstack_image[0].name }}"
+      tags:
+        - audit
+        - image 
+
+    - name: precheck - fail if image does not contain "cirros"
+      fail: 
+        msg: "the image {{ result.openstack_image[0].id }}  does not contain the name cirros"
+      when: "'cirros' not in result.openstack_image[0].name" 
+
+    - name: Use Ansible to "openstack flavor list"
+      os_flavor_info:    #call to os_flavor_info.py, installed with ansible
+        cloud: alta3cloud  #this is the reference to creds in cloud.yml 
+      register: flavresult  # create a var called flavresult and save the results
+      tags: 
+        - audit
+        - flavor
+
+    - name: Show flavors     
+      debug:
+        msg: "{{ flavresult.openstack_flavors[0].id }}"
+      tags:
+        - audit
+        - flavor
+
+    - name: Precheck - fail if flavor is not 512 RAM and 1 vcpu
+      fail: 
+        msg: "the flavor {{ flavresult.openstack_flavors[0].id }} is not 512 and 1 vcpu"
+      when: flavresult.openstack_flavors[0].ram != 512 or flavresult.openstack_flavors[0].vcpus != 1
+
+    - name: openstack keypair generator
+      openssh_keypair:
+        path: /home/centos/.ssh/id_rsa_openstack
+
+    - name: openstack keypair
+      os_keypair:
+        cloud: alta3cloud
+        state: "{{ present_or_absent }}"
+        name: a3c_ansible_key
+        public_key_file: /home/centos/.ssh/id_rsa_openstack.pub
+
+    - name: Launch a VM using the info we gathered
+      register: vm_results
+      os_server:
+        cloud: alta3cloud
+        state: "{{ present_or_absent }}"
+        name: ansible_vm1
+        image: "{{ result.openstack_image[0].id }}"
+        flavor: "{{ flavresult.openstack_flavors[0].id }}"
+        key_name: a3c_ansible_key   # this must match the name of an avaialbe key within the openstack cloud
+                                       # allows SSH to the machine without a password      
+    - name: show results of how VM launched
+      debug:
+        msg: "{{ vm_results }}"
+        verbosity: 1

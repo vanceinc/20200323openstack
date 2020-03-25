@@ -1,0 +1,7 @@
+---
+
+- name: Using the role I created
+  hosts: localhost
+
+  roles: 
+    - os-image-uploader

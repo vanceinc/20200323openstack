@@ -19,10 +19,10 @@
         msg: "{{ result.openstack_image[0].id }}"  #this produces the UUID of the image
         #  msg: "{{ result.openstack_image[0].name }}"
 
-#    - name: precheck - fail if image does not contain "cirros"
-#      fail: 
-#        msg: "the image {{ result.openstack_image[0].id }}  does not contain the name cirros"
-#      when: "'cirros' not in result.openstack_image[0].name" 
+    - name: precheck - fail if image does not contain "cirros"
+      fail: 
+        msg: "the image {{ result.openstack_image[0].id }}  does not contain the name cirros"
+      when: "'cirros' not in result.openstack_image[0].name" 
 
     - name: Use Ansible to "openstack flavor list"
       os_flavor_info:    #call to os_flavor_info.py, installed with ansible
@@ -34,10 +34,10 @@
         verbosity: 1
         msg: "{{ flavresult.openstack_flavors[0].id }}"
 
-#    - name: Precheck - fail if flavor is not 512 RAM and 1 vcpu
-#      fail: 
-#        msg: "the flavor {{ flavresult.openstack_flavors[0].id }} is not 512 and 1 vcpu"
-#     when: flavresult.openstack_flavors[0].ram != 512 or flavresult.openstack_flavors[0].vcpus != 1
+    - name: Precheck - fail if flavor is not 512 RAM and 1 vcpu
+      fail: 
+        msg: "the flavor {{ flavresult.openstack_flavors[0].id }} is not 512 and 1 vcpu"
+      when: flavresult.openstack_flavors[0].ram != 512 or flavresult.openstack_flavors[0].vcpus != 1
 
     - name: openstack keypair generator
       openssh_keypair:
@@ -50,48 +50,17 @@
         name: a3c_ansible_key
         public_key_file: /home/centos/.ssh/id_rsa_openstack.pub
 
-    - name: create a security group
-      os_security_group:
-        cloud: alta3cloud
-        state: "{{ present_or_absent }}"
-        name: ssh-icmp
-
-    - name: add security_group_rule
-      os_security_group_rule:
-        cloud: alta3cloud
-        security_group: ssh-icmp
-        protocol: icmp
-        remote_ip_prefix: 0.0.0.0/0
-#      loop: [icmp, ssh]
-
-    - name: add security_group_rule
-      os_security_group_rule:
-        cloud: alta3cloud
-        security_group: ssh-icmp
-        protocol: tcp
-        port_range_min: 22
-        port_range_max: 22
-        remote_ip_prefix: 0.0.0.0/0
-
-    - name: 
-      register: vm_results
+    - name: Launch a VM using the info we gathered
+      register: vm results
       os_server:
-        security_groups: ssh-icmp
-        network: demo-net
         cloud: alta3cloud
         state: "{{ present_or_absent }}"
         name: ansible_vm1
-        timeout: 300
         image: "{{ result.openstack_image[0].id }}"
-        flavor: "{{ flavresult.openstack_flavors[1].id }}"
+        flavor: "{{ flavresult.openstack_flavors[0].id }}"
         key_name: a3c_ansible_key   # this must match the name of an avaialbe key within the openstack cloud
                                        # allows SSH to the machine without a password      
-    - name: 
-      os_floating_ip:
-        cloud: alta3cloud
-        server: ansible_vm1
-
     - name: show results of how VM launched
       debug:
-        msg: "{{ vm_results|default('will log ito other node') }}"
+        msg: "{{ vm_results }}"
         verbosity: 1

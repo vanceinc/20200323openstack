@@ -1,0 +1,26 @@
+---
+- name: a playbook to install applications
+  hosts: all 
+
+# gather_facts is always set to yes
+#If gather_facts set to yes,  it calls/uses the 'setup.py' file.
+# this grabs facts and variables that can be recalled from the playbooks
+
+  gather_facts: yes
+  tasks:
+
+  - name: install epel-release
+    yum:
+      name: epel-release
+      state: present
+    become: yes
+    vars: 
+      ansible_python_interpreter: /usr/bin/python   
+
+  - name: install an app or two
+    yum:
+      name: [moon-buggy, sl, figlet]
+      state: present
+    become: yes
+    vars:
+      ansible_python_interpreter: /usr/bin/python
